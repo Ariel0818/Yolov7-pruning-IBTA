@@ -1,6 +1,8 @@
-# Fruit Tracking with YOLOv7 and Step-Compensated SORT
+# Strawberry Detection and Counting based on YOLOv7 Pruning and Information Based Tracking Algorithm (IBTA)
 
-A complete pipeline for **multi-object tracking of agricultural fruits** (flower, immature fruit, mature fruit) from a mobile robot platform. The system covers three stages: detection training, tracking, and MOT evaluation.
+> **Paper:** [arXiv:2407.12614](https://arxiv.org/abs/2407.12614)
+
+A complete pipeline for **multi-object tracking of strawberry fruits and flowers** (flower, immature fruit, mature fruit) from a mobile robot platform. The system covers three stages: detection training with head pruning, tracking with robot-motion compensation, and MOT evaluation.
 
 ---
 
@@ -8,10 +10,63 @@ A complete pipeline for **multi-object tracking of agricultural fruits** (flower
 
 ```
 detection/          →         tracking/          →        evaluation/
-YOLOv7 (multi-head)     Step-Compensated SORT          py-motmetrics
+YOLOv7 (head pruning)    IBTA / Step-SORT              py-motmetrics
    ↓                           ↓                              ↑
 det.txt per frame      output/*.txt (with IDs)     MOTA / MOTP / IDF1 ...
 ```
+
+---
+
+## Network Architecture
+
+The detector is based on YOLOv7 with a three-scale detection head (Head 1 / 2 / 3). A key contribution is **detection head pruning**: each head is trained independently and in combination to find the optimal subset for strawberry detection.
+
+![Network Architecture](docs/images/fig_arch.png)
+
+---
+
+## Tracking Algorithm (IBTA)
+
+IBTA (Information Based Tracking Algorithm) replaces the Kalman filter in standard SORT with robot velocity/direction information and adds a location-score matching cascade for dense, overlapping fruits.
+
+![IBTA vs SORT workflow](docs/images/fig_ibta.png)
+
+**(a)** Standard SORT uses a Kalman filter to predict object positions.  
+**(b)** IBTA uses the robot's velocity and direction to predict positions, then matches via IoU measurement and location-score matching in a two-stage cascade.
+
+---
+
+## Detection Results
+
+Comparison of different YOLOv7 model variants and head configurations on strawberry detection:
+
+![Detection results comparison](docs/images/fig_detection.png)
+
+Head pruning (e.g. YOLOv7-tiny with head 2,3) achieves comparable bounding box counts to the full model while reducing false positives, particularly for small overlapping objects.
+
+---
+
+## Key Results
+
+### Detection — Head Ablation (mAP@0.5)
+
+| Model | Heads | mAP@0.5 |
+|-------|-------|---------|
+| YOLOv7-tiny | All (1+2+3) | baseline |
+| YOLOv7-tiny | Head 2+3 | **best compact** |
+| YOLOv7 | All | — |
+| YOLOv7 | Head 2 | **best full** |
+| YOLOv7-X | Head 2 | competitive |
+
+### Tracking — MOT Metrics (Flower, sequence 4)
+
+| Method | MOTA ↑ | MOTP ↑ | IDF1 ↑ | IDs ↓ |
+|--------|--------|--------|--------|-------|
+| Plain (no tracker) | — | — | — | — |
+| SORT | — | — | — | — |
+| **IBTA (ours)** | **best** | **best** | **best** | **lowest** |
+
+> Fill in your numeric results from the paper here. The table structure is ready.
 
 ---
 
@@ -19,6 +74,11 @@ det.txt per frame      output/*.txt (with IDs)     MOTA / MOTP / IDF1 ...
 
 ```
 fruit-tracking/
+├── docs/images/             ← figures used in this README
+│   ├── fig_arch.png         #   network architecture diagram
+│   ├── fig_ibta.png         #   IBTA vs SORT workflow
+│   └── fig_detection.png    #   detection result comparison
+│
 ├── detection/               # YOLOv7-based fruit detector
 │   ├── cfg/training/        # Model configs (full / per-head ablation)
 │   ├── models/              # YOLOv7 model definitions
@@ -30,9 +90,9 @@ fruit-tracking/
 │   ├── trainyolov7h[12|13|23].py  # Train dual-head variants
 │   └── run.py               # Run all ablation trainings sequentially
 │
-├── tracking/                # Step-compensated SORT tracker
-│   ├── sortwithstep.py      # Main tracker (Kalman + step compensation)
-│   ├── Vsort.py             # Location-score assisted tracker
+├── tracking/                # IBTA tracker
+│   ├── sortwithstep.py      # Step-compensated SORT (Kalman + robot motion)
+│   ├── Vsort.py             # Location-score assisted tracker (IBTA core)
 │   ├── stepcal.py           # Compute step value from GT annotations
 │   ├── ioucal.py            # Standalone IoU utility
 │   ├── dataTransform.py     # Format conversion utilities
@@ -56,9 +116,9 @@ fruit-tracking/
 
 ### 1. Detection — `detection/`
 
-YOLOv7 fine-tuned for three fruit classes: **flower**, **immature fruit**, **mature fruit**.
+YOLOv7 fine-tuned for three strawberry classes: **flower**, **immature fruit**, **mature fruit**.
 
-A key contribution is the **multi-head ablation training system**: the detection head is decomposed into three scale-specific sub-heads (h1: large, h2: medium, h3: small). Seven training configurations let you study which detection scales matter most for your target objects.
+The detection head is decomposed into three scale-specific sub-heads (Head 1: small objects, Head 2: medium, Head 3: large). Seven training configurations enable systematic ablation to find the optimal head subset per object category.
 
 **Quick start:**
 ```bash
@@ -69,47 +129,41 @@ python trainyolov7.py --cfg cfg/training/yolov7/yolov7.yaml \
                       --data data/SLdata.yaml \
                       --weights '' --epochs 150
 
-# Run inference
+# Train head-2-only variant
+python trainyolov7h2.py
+
+# Run inference (saves det.txt for tracker input)
 python detect.py --weights runs/train/exp/weights/best.pt \
-                 --source path/to/video.mp4 \
-                 --save-txt   # saves det.txt for tracker input
+                 --source path/to/video.mp4 --save-txt
 
 # Run all ablation experiments sequentially
 python run.py
 ```
 
-**Model configs** live in `cfg/training/`. Each YAML specifies which detection heads are active. The `data/SLdata.yaml` file points to your image directories and defines the 3 class names.
-
 ---
 
 ### 2. Tracking — `tracking/`
 
-SORT-based multi-object tracker with two domain-specific extensions for robot-mounted cameras.
+IBTA removes the Kalman filter and replaces it with explicit robot motion compensation, then adds a two-stage matching cascade (IoU + location score).
 
-#### Key innovation: Step Compensation
-
-Fruits are static; the camera moves. This means fruit positions shift by a roughly constant pixel offset (`step`) every frame. `sortwithstep.py` shifts each tracker's predicted bounding box by `step` pixels along the y-axis before IoU matching, effectively compensating for robot motion.
-
-**Compute the step value from your own data:**
+#### Step 1 — Compute the step value from your data
 ```bash
 python stepcal.py --input gt_data/flowerGT/4.txt
 # Output: Average step: 314.57 pixels/frame
 ```
 
-**Run the tracker:**
+#### Step 2 — Run the tracker
 ```bash
+# Step-compensated SORT
 python sortwithstep.py --seq_path data000 --step 314.57 --max_age 2 --min_hits 0
-# Results saved to output/<sequence>.txt
-```
 
-**Run the location-score assisted tracker (Vsort):**
-```bash
+# IBTA (location-score assisted)
 python Vsort.py --input gt_data/flowerGT/4.txt \
                 --output stepmatchoutput/flower4.txt \
                 --step 315
 ```
 
-**Convert formats:**
+#### Step 3 — Convert formats
 ```bash
 # GT → evaluation format
 python dataTransform.py --mode gt2eval \
@@ -121,7 +175,6 @@ python dataTransform.py --mode sort2darklabel \
 ```
 
 #### Tracking input format (MOT15-2D)
-
 Detection files under `data000/train/<sequence>/det/det.txt`:
 ```
 frame, -1, x, y, w, h, score, -1, -1, -1
@@ -136,19 +189,19 @@ frame, id, x, y, w, h, 1, -1, -1, -1
 
 ### 3. Evaluation — `evaluation/`
 
-Modified [py-motmetrics](https://github.com/cheind/py-motmetrics) library for computing standard MOT metrics.
+Modified [py-motmetrics](https://github.com/cheind/py-motmetrics) for computing standard MOT metrics.
 
-**Key modifications from the original library** (all in `motmetrics/apps/eval_motchallenge.py`):
-- Data paths are now **relative and configurable** via `--groundtruths` / `--tests` arguments (default: `yourdata/`)
-- `min_confidence=-1` to accept all tracks (trackers that don't output confidence)
-- Matching uses **Euclidean centre-point distance** (threshold: 5000 px) instead of IoU, which works better for dense/overlapping fruits
+**Key modifications from the original library:**
+- Data paths are relative and configurable via `--groundtruths` / `--tests` (default: `yourdata/`)
+- `min_confidence=-1` accepts all tracks regardless of confidence score
+- Matching uses **Euclidean centre-point distance** (threshold: 5000 px) instead of IoU, which works better for dense/overlapping strawberries
 
 **Organize your data:**
 ```
 evaluation/yourdata/
-├── video1/gt/gt.txt     # ground truth for video1
+├── video1/gt/gt.txt     # ground truth
 ├── video2/gt/gt.txt
-├── video1.txt           # tracker result for video1
+├── video1.txt           # tracker result
 └── video2.txt
 ```
 
@@ -196,9 +249,9 @@ pip install -r requirements.txt
 
 ## Dataset
 
-The ground-truth annotations in `tracking/gt_data/` cover three fruit categories across 44 video sequences captured from a mobile agricultural robot. File naming convention: `<date>_<id>_<camera>.txt` (field recordings) or `<number>.txt` (lab sequences).
+Ground-truth annotations in `tracking/gt_data/` cover three strawberry categories across 44 video sequences captured by a mobile agricultural robot. File naming convention: `<date>_<id>_<camera>.txt` (field recordings) or `<number>.txt` (lab sequences).
 
-GT file format (DarkLabel export → converted via `dataTransform.py`):
+GT file format:
 ```
 frame, id, x, y, w, h, 1, -1, -1, -1
 ```
@@ -207,7 +260,22 @@ frame, id, x, y, w, h, 1, -1, -1, -1
 
 ## Citation
 
-If you use this code, please cite the original SORT paper:
+If you use this code or find our work helpful, please cite:
+
+```bibtex
+@article{2407.12614,
+  title   = {Strawberry detection and counting based on YOLOv7 pruning
+             and information based tracking algorithm},
+  author  = {},
+  journal = {arXiv preprint arXiv:2407.12614},
+  year    = {2024},
+  url     = {https://arxiv.org/abs/2407.12614}
+}
+```
+
+> **Note:** Please fill in the `author` field with the full author list from the paper.
+
+This work also builds on:
 
 ```bibtex
 @inproceedings{Bewley2016_sort,
@@ -218,11 +286,7 @@ If you use this code, please cite the original SORT paper:
   pages     = {3464--3468},
   doi       = {10.1109/ICIP.2016.7533003}
 }
-```
 
-And the YOLOv7 paper:
-
-```bibtex
 @inproceedings{wang2023yolov7,
   title     = {YOLOv7: Trainable bag-of-freebies sets new state-of-the-art for real-time object detectors},
   author    = {Wang, Chien-Yao and Bochkovskiy, Alexey and Liao, Hong-Yuan Mark},
