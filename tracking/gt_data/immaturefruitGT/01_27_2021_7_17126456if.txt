@@ -1,0 +1,14 @@
+27,immature flower,1,666,434,62,65
+28,immature flower,1,671,772,69,66
+48,immature flower,2,826,342,82,101
+49,immature flower,2,829,774,85,91
+61,immature flower,3,614,213,63,93
+62,immature flower,3,633,561,63,90
+63,immature flower,3,652,904,62,60
+83,immature flower,4,555,45,27,52
+84,immature flower,4,566,441,31,49
+85,immature fruit,4,588,790,39,56
+93,immature fruit,6,557,541,58,65
+94,immature fruit,6,577,848,57,65
+98,immature flower,5,621,307,55,63
+99,immature flower,5,644,644,49,71

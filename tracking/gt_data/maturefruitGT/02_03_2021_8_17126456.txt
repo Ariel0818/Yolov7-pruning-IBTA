@@ -1,0 +1,7 @@
+23,mature fruit,1,782,235,78,104
+24,mature fruit,1,810,643,69,105
+46,mature fruit,2,807,28,131,93
+47,mature fruit,2,811,383,134,87
+48,mature fruit,2,838,733,125,98
+70,mature fruit,3,793,665,39,42
+99,mature fruit,4,874,247,93,102

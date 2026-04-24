@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# PyTorch / model weights
+*.pt
+*.pth
+*.onnx
+*.engine
+*.tflite
+*.wts
+
+# Datasets and large media
+*.zip
+*.tar.gz
+*.avi
+*.mp4
+*.mov
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# macOS
+.DS_Store
+__MACOSX/
+
+# Logs and run outputs
+runs/
+wandb/
+*.log
+
+# Test outputs (keep directory structure, ignore generated txt)
+tracking/output/*.txt
+tracking/stepmatchoutput/*.txt
