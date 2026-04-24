@@ -50,23 +50,21 @@ Head pruning (e.g. YOLOv7-tiny with head 2,3) achieves comparable bounding box c
 
 ### Detection — Head Ablation (mAP@0.5)
 
-| Model | Heads | mAP@0.5 |
+| Model | Heads | mAP@0.5 (%)|
 |-------|-------|---------|
-| YOLOv7-tiny | All (1+2+3) | baseline |
-| YOLOv7-tiny | Head 2+3 | **best compact** |
-| YOLOv7 | All | — |
-| YOLOv7 | Head 2 | **best full** |
-| YOLOv7-X | Head 2 | competitive |
+| YOLOv7-tiny | All (1+2+3) | 87.6 |
+| YOLOv7-tiny | Head 2+3 | **89.1** |
+| YOLOv7 | All | 78.1 |
+| YOLOv7 | Head 2 | **89.0** |
+| YOLOv7-X | Head 2 | 87.4 |
 
 ### Tracking — MOT Metrics (Flower, sequence 4)
 
 | Method | MOTA ↑ | MOTP ↑ | IDF1 ↑ | IDs ↓ |
 |--------|--------|--------|--------|-------|
-| Plain (no tracker) | — | — | — | — |
-| SORT | — | — | — | — |
-| **IBTA (ours)** | **best** | **best** | **best** | **lowest** |
+| CTA | 76.7 | 81.8 | 75.8 | 46 |
+| **IBTA (ours)** | **89.0** | **87.8** | **88.2** | **34** |
 
-> Fill in your numeric results from the paper here. The table structure is ready.
 
 ---
 
