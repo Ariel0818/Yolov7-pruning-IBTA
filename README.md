@@ -62,7 +62,7 @@ Head pruning (e.g. YOLOv7-tiny with head 2,3) achieves comparable bounding box c
 
 | Method | MOTA ↑ | MOTP ↑ | IDF1 ↑ | IDs ↓ |
 |--------|--------|--------|--------|-------|
-| CTA | 76.7 | 81.8 | 75.8 | 46 |
+| [CTA (Puranik et al., 2021)](https://doi.org/10.3920/978-90-8686-916-9_15) | 76.7 | 81.8 | 75.8 | 46 |
 | **IBTA (ours)** | **89.0** | **87.8** | **88.2** | **34** |
 
 
@@ -261,13 +261,11 @@ frame, id, x, y, w, h, 1, -1, -1, -1
 If you use this code or find our work helpful, please cite:
 
 ```bibtex
-@article{2407.12614,
-  title   = {Strawberry detection and counting based on YOLOv7 pruning
-             and information based tracking algorithm},
-  author  = {},
-  journal = {arXiv preprint arXiv:2407.12614},
-  year    = {2024},
-  url     = {https://arxiv.org/abs/2407.12614}
+@article{liu2024strawberry,
+  title={Strawberry detection and counting based on YOLOv7 pruning and information based tracking algorithm},
+  author={Liu, Shiyu and Zhou, Congliang and Lee, Won Suk},
+  journal={arXiv preprint arXiv:2407.12614},
+  year={2024}
 }
 ```
 
